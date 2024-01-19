@@ -21,14 +21,12 @@ export class MyGateway implements OnModuleInit {
 
   onModuleInit() {
     this.server.on('connection', (socket) => {
-      // console.log(socket.id);
       console.log('connected at: ', new Date())
     })
   }
 
   @SubscribeMessage('newMessage')
   onNewMessage(@MessageBody() data: any) {
-    // console.log(data)
     this.server.emit('onMessage', {
       msg: 'New message',
       content: data,
@@ -38,7 +36,6 @@ export class MyGateway implements OnModuleInit {
   @SubscribeMessage('join_custom_room')
   onJoinCustomRoom(@MessageBody() data: string, @ConnectedSocket() socket: Socket) {
     const { name } = JSON.parse(data);
-    // console.log({rooms})
     if (rooms.has(name)) {
       const initialCapacity = [...rooms.get(name)].length;
       if (initialCapacity === 2) {
@@ -53,7 +50,6 @@ export class MyGateway implements OnModuleInit {
     } else {
       rooms.get(name).add(socket.id);
     }
-    // this.server.to(socket.id).emit("join_message", `Welcome to custom room: ${name}`);
     const capacity = [...rooms.get(name)].length;
     const socketIds = [...rooms.get(name)];
     const res = { message: `Welcome to custom room: ${name}`, capacity, socketIds };
@@ -65,31 +61,23 @@ export class MyGateway implements OnModuleInit {
     }
   }
 
-  // @SubscribeMessage('send_custom_room')
-  // onSendCustomRoom(@MessageBody() data: string, @ConnectedSocket() socket: Socket) {
-  //   const { name, message } = JSON.parse(data);
-  //   console.log({name, message, data});
-  //   this.server.to(name).emit("custom_message", JSON.stringify(message));
-  // }
   @SubscribeMessage('send_custom_room')
   onSendCustomRoom(@MessageBody() data: any, @ConnectedSocket() socket: Socket) {
     const { name, message } = data
-    // console.log({name, message, data});
     this.server.to(name).emit("custom_message", message);
   }
 
 
   @SubscribeMessage('leave_custom_room')
   onLeaveCustomRoom(@MessageBody() data: string, @ConnectedSocket() socket: Socket) {
-    // console.log('leave by: ', socket.id)
     const { name } = JSON.parse(data);
     socket.leave(name);
     if (rooms.has(name)) {
       rooms.get(name).delete(socket.id);
+      const socketIds = [...rooms.get(name)];
+      const capacity = [...rooms.get(name)].length;
+      const res = { message: `A new user: ${socket.id} has left`, capacity, socketIds };
+      this.server.to(socketIds[0]).emit("user_left_event", JSON.stringify(res));
     }
   }
-
-  // sendToCustomRoom(name, message) {
-  //   this.server.to(name).emit("message", message);
-  // }
 }
